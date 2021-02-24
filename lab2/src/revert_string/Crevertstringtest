@@ -1,0 +1,39 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void RevertString(char* str)
+{
+	int i, j, l;
+	char t;
+	l = strlen(str);
+	i = 0;
+	j = l - 1;
+	while (i < j)
+	{
+		t = str[i];
+		str[i] = str[j];
+		str[j] = t;
+		i++; j--;
+	}
+}
+
+
+int main(int argc, char* argv[])
+{
+	char buff[30];
+	
+	char* string;
+	printf("Write worker surname\n ");
+	while (fgetc(stdin) != '\n');
+	gets_s(buff);
+	string = (char*)malloc(strlen(buff) + 1);
+	strcpy(string, buff);
+
+	RevertString(string);
+
+	printf("Reverted: %s\n", string);
+	free(string);
+	return 0;
+}
