@@ -92,25 +92,63 @@ int main(int argc, char **argv) {
 
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
+  for (int i = 0; i < array_size; i++)
+    {
+        printf("%d\n", array[i]);
+    }
   int active_child_processes = 0;
+
+  int part_size = array_size / pnum; 
+  FILE* tmp;
+
+  int** pipefd; //check this out
+  if (with_files)
+  {
+      tmp = fopen("tmp.txt", "w");
+  }
+  else pipefd = (int**)malloc(sizeof(int*)*pnum); 
+
+
+
 
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
   for (int i = 0; i < pnum; i++) {
+        if (!with_files)
+    {
+        pipefd[i]=(int*)malloc(sizeof(int)*2);
+        if (pipe(pipefd[i])<0)
+        {
+            printf("Error while making pipe");
+            return 1;
+        }
+    }
+
     pid_t child_pid = fork();
     if (child_pid >= 0) {
       // successful fork
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-
+        struct MinMax sub_min_max;
         // parallel somehow
+        if (i != pnum - 1)
+        {
+            sub_min_max = GetMinMax(array, i*part_size, (i+1) * part_size);
+        }
+        else 
+        {
+            sub_min_max = GetMinMax(array, i*part_size, array_size);
+        }
 
         if (with_files) {
-          // use files here
+            fwrite(&sub_min_max.min, sizeof(int), 1 , tmp);
+            fwrite(&sub_min_max.max, sizeof(int), 1 , tmp);
         } else {
-          // use pipe here
+           write(pipefd[i][1], &sub_min_max.min, sizeof(int));
+            write(pipefd[i][1],&sub_min_max.max, sizeof(int));
+            close(pipefd[i][1]);
         }
         return 0;
       }
@@ -123,7 +161,7 @@ int main(int argc, char **argv) {
 
   while (active_child_processes > 0) {
     // your code here
-
+    wait(NULL); 
     active_child_processes -= 1;
   }
 
@@ -137,14 +175,27 @@ int main(int argc, char **argv) {
 
     if (with_files) {
       // read from files
+      fread(&min,sizeof(int),1,tmp);
+      fread(&max,sizeof(int),1,tmp);
     } else {
       // read from pipes
+       read(pipefd[i][0],&min,sizeof(int));
+        read(pipefd[i][0],&max,sizeof(int));  
+        close(pipefd[i][0]);    
+
+      free(pipefd[i]) ;
     }
 
     if (min < min_max.min) min_max.min = min;
     if (max > min_max.max) min_max.max = max;
   }
 
+    if (with_files) {
+      fclose(tmp);
+    }
+     else {
+      free(pipefd);
+    }
   struct timeval finish_time;
   gettimeofday(&finish_time, NULL);
 
@@ -159,3 +210,4 @@ int main(int argc, char **argv) {
   fflush(NULL);
   return 0;
 }
+
