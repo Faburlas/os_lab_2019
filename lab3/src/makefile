@@ -1,12 +1,17 @@
 CC=gcc
 CFLAGS=-I.
 
+all: $(TARGETS) 
+
 sequential_min_max : utils.o find_min_max.o utils.h find_min_max.h
 	$(CC) -o sequential_min_max find_min_max.o utils.o sequential_min_max.c $(CFLAGS)
 
 parallel_min_max : utils.o find_min_max.o utils.h find_min_max.h
 	$(CC) -o parallel_min_max utils.o find_min_max.o parallel_min_max.c $(CFLAGS)
 
+ex5 : ex5.c
+	$(CC) -o ex5.o ex5.c $(CFLAGS)
+	
 utils.o : utils.h
 	$(CC) -o utils.o -c utils.c $(CFLAGS)
 
