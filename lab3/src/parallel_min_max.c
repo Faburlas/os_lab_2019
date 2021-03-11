@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
   int seed = -1;
   int array_size = -1;
   int pnum = -1;
-  bool with_files = false;
+  bool with_files = true;
 
   while (true) {
     int current_optind = optind ? optind : 1;
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
             break;
           case 2:
             pnum = atoi(optarg); //Pocheckat
-            if (pnum <= 0) { 
+            if (pnum <= 0 || pnum > array_size) { 
                 printf("pnum is a positive number\n");
                 return 1;
             }
@@ -92,10 +92,10 @@ int main(int argc, char **argv) {
 
   int *array = malloc(sizeof(int) * array_size);
   GenerateArray(array, array_size, seed);
-  for (int i = 0; i < array_size; i++)
+  /*for (int i = 0; i < array_size; i++) dlya proverki
     {
         printf("%d\n", array[i]);
-    }
+    }*/
   int active_child_processes = 0;
 
   int part_size = array_size / pnum; 
@@ -131,23 +131,14 @@ int main(int argc, char **argv) {
       active_child_processes += 1;
       if (child_pid == 0) {
         // child process
-        struct MinMax sub_min_max;
-        // parallel somehow
-        if (i != pnum - 1)
-        {
-            sub_min_max = GetMinMax(array, i*part_size, (i+1) * part_size);
-        }
-        else 
-        {
-            sub_min_max = GetMinMax(array, i*part_size, array_size);
-        }
-
+        struct MinMax min_max;
+        // parallel somehow 
+            min_max = GetMinMax(array, i*part_size, array_size);
         if (with_files) {
-            fwrite(&sub_min_max.min, sizeof(int), 1 , tmp);
-            fwrite(&sub_min_max.max, sizeof(int), 1 , tmp);
+            fprintf(tmp,"%d %d\n" ,min_max.min ,min_max.max );
         } else {
-           write(pipefd[i][1], &sub_min_max.min, sizeof(int));
-            write(pipefd[i][1],&sub_min_max.max, sizeof(int));
+           write(pipefd[i][1], &min_max.min, sizeof(int));
+            write(pipefd[i][1],&min_max.max, sizeof(int));
             close(pipefd[i][1]);
         }
         return 0;
@@ -169,14 +160,20 @@ int main(int argc, char **argv) {
   min_max.min = INT_MAX;
   min_max.max = INT_MIN;
 
+    if (with_files)
+    {
+        fclose(tmp);
+        tmp = fopen("tmp.txt", "r");
+    }
+
   for (int i = 0; i < pnum; i++) {
     int min = INT_MAX;
     int max = INT_MIN;
 
     if (with_files) {
       // read from files
-      fread(&min,sizeof(int),1,tmp);
-      fread(&max,sizeof(int),1,tmp);
+      fscanf(tmp,"%d %d\n" ,&min ,&max );
+      
     } else {
       // read from pipes
        read(pipefd[i][0],&min,sizeof(int));
@@ -186,8 +183,12 @@ int main(int argc, char **argv) {
       free(pipefd[i]) ;
     }
 
-    if (min < min_max.min) min_max.min = min;
-    if (max > min_max.max) min_max.max = max;
+    if (min < min_max.min) 
+    min_max.min = min;
+    if (max > min_max.max) 
+    min_max.max = max;
+    //printf("Min: %d\n", min);
+    //printf("Max: %d\n", max);
   }
 
     if (with_files) {
