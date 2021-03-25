@@ -1,0 +1,5 @@
+2)
+gcc zombie.c -o zombie
+ps aux | grep defunct 
+ps -xal | grep defunct
+kill -KILL (PPID)
