@@ -9,6 +9,25 @@
 
 pthread_mutex_t mut = PTHREAD_MUTEX_INITIALIZER;
 
+struct FactSt {
+    long long* result;
+    int begin;
+    int end;
+    int module;
+};
+
+
+
+void Factorial(struct FactSt* args) {
+    pthread_mutex_lock(&mut);
+    
+     long long work = *args->result;
+    for (int i = args->begin; i < args->end; ++i) {
+        work = (work * i % args->module) % args->module;
+    }
+    *args->result = work;
+    pthread_mutex_unlock(&mut);
+}
 
 int main(int argc, char** argv) {
     int module = -1;
@@ -79,5 +98,33 @@ int main(int argc, char** argv) {
     }
     
     pthread_t threads[pnum];
+    struct FactSt FactStruct[pnum];
+
+    int step = number / pnum;
+    long long result = 1;
+    for (int i = 0; i < pnum ; ++i) {
+        FactStruct[i].result = &result;
+        FactStruct[i].module = module;
+        FactStruct[i].begin = 1 + i * step;
+        if (i < pnum - 1) {
+            FactStruct[i].end = FactStruct[i].begin + step;
+        } else {
+            FactStruct[i].end = number+1;
+        }        
+    }
+
+    for (int i = 0; i < pnum ; ++i) {
+        if (pthread_create(&threads[i], NULL, (void*)Factorial, (void*)&FactStruct[i]) != 0) {
+            perror("pthread_create");
+            exit(1);
+        }
+    }
+    for (int i = 0; i < pnum ; ++i) {
+        if (pthread_join(threads[i], NULL) != 0) {
+            perror("pthread_join");
+            exit(1);
+        }
+    }
     
+    printf("Answer = %lld\n", result);
 }
